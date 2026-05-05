@@ -1,0 +1,10 @@
+build/
+
+sdk/*
+!sdk/README.md
+
+bin/*
+!bin/fonts
+
+.vs/
+.vscode/
