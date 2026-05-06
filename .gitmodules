@@ -1,3 +1,6 @@
 [submodule "ext/PcapPlusPlus"]
 	path = ext/PcapPlusPlus
 	url = https://github.com/seladb/PcapPlusPlus.git
+[submodule "ext/glfw"]
+	path = ext/glfw
+	url = https://github.com/glfw/glfw.git
