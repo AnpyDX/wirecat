@@ -2,7 +2,7 @@
 
 A lightweight network protocol analyzer.
 
-> Note: On progress.
+> Note: Work in progress.
 
 ## Features
 
