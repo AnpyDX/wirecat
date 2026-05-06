@@ -32,11 +32,11 @@ First, clone repo into your computer:
 git clone --recursive https://github.com/anpydx/wirecat.git
 ```
 
-If you are compiling on Windows, you need to download and extract `WinPcap` or `NPcap` SDK in `~/sdk` directory. See [sdk/README.md](https://github.com/anpydx/wirecat/).
+If you are compiling on Windows, you need to download and extract `WinPcap` or `NPcap` SDK in `~/sdk` directory. Check [sdk/README.md](https://github.com/AnpyDX/wirecat/tree/main/sdk).
 
-If you are using Linux or macOS, see [PcapPlusPlus Documentation](https://pcapplusplus.github.io/docs/install) for dependencies installation and environment configuration.
+If you are using Linux or macOS, check [PcapPlusPlus Documentation](https://pcapplusplus.github.io/docs/install) for dependencies installation and environment configuration.
 
-### Compile
+### Compilation
 
 Once setting up your environment, run following commands to start compiling for executable.
 
@@ -44,6 +44,8 @@ Once setting up your environment, run following commands to start compiling for 
 cmake -S . -B build
 cmake --build build
 ```
+
+Executable can be found in `~/bin`.
 
 ## Dependencies
 
