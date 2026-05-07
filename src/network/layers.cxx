@@ -84,6 +84,21 @@ namespace WireCat::Network {
         );
     }
 
+    IPv6Address::IPv6Address(std::span<uint8_t, 128> rawData) {
+        for (int i = 0; i < 8; i++) {
+            memcpy(&address[i], rawData.data() + sizeof(uint16_t) * i, sizeof(uint16_t));
+            address[i] = pcpp::netToHost16(address[i]);
+        }
+    }
+
+    std::string IPv6Address::toString() const {
+        return std::format(
+            "{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}:{:04X}",
+            address[0], address[1], address[2], address[3],
+            address[4], address[5], address[6], address[7]
+        );
+    }
+
     LinkLayer::LinkLayer(std::span<uint8_t> rawData)
     : rawData(rawData)
     {

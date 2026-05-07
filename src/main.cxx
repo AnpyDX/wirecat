@@ -277,16 +277,16 @@ public:
                             }
                             else if (previewFoldGroup->getSelected() == 3) {
                                 // Transport Layer
-                                if (pkt.transportLayer.has_value()) {
-                                    hexEditState.Bytes = (void*)pkt.transportLayer->rawData.data();
-                                    hexEditState.MaxBytes = static_cast<int>(pkt.transportLayer->rawData.size());
+                                if (pkt.transportLayer.isValid()) {
+                                    hexEditState.Bytes = (void*)pkt.transportLayer.rawData.data();
+                                    hexEditState.MaxBytes = static_cast<int>(pkt.transportLayer.rawData.size());
                                 }
                             }
                             else if (previewFoldGroup->getSelected() == 4) {
                                 // Application Layer
-                                if (pkt.applicationLayer.has_value()) {
-                                    hexEditState.Bytes = (void*)pkt.applicationLayer->rawData.data();
-                                    hexEditState.MaxBytes = static_cast<int>(pkt.applicationLayer->rawData.size());
+                                if (pkt.applicationLayer.isvalid()) {
+                                    hexEditState.Bytes = (void*)pkt.applicationLayer.rawData.data();
+                                    hexEditState.MaxBytes = static_cast<int>(pkt.applicationLayer.rawData.size());
                                 }
                             }
                             else {

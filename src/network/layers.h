@@ -26,12 +26,16 @@ namespace WireCat::Network {
 
         std::array<uint8_t, 4> address {};
     };
-    struct IPv6Address {};
-    struct IPAddress {
-        union {
-            IPv4Address addrV4;
-            IPv6Address addrV6;
-        };
+
+    struct IPv6Address {
+        IPv6Address() = default;
+        IPv6Address(std::span<uint8_t, 128> rawData);
+        IPv6Address(const IPv6Address&) = default;
+
+        [[nodiscard]]
+        std::string toString() const;
+
+        std::array<uint16_t, 8> address {};
     };
 
     struct NetworkLayer;
@@ -140,7 +144,16 @@ namespace WireCat::Network {
 
             /* IPv6 */
             struct IPv6InfoT {
-                uint8_t version;
+                uint8_t version;    // 4 bits
+                uint8_t trafficClass;
+                uint32_t flowLabel; // 20 bits
+                uint16_t payloadLength;
+                uint8_t nextHeader;
+                uint8_t hopLimit;
+                IPv6Address srcIPAddr;
+                IPv6Address dstIPAddr;
+                uint8_t protocol;
+                std::span<uint8_t> data;
             } IPv6Info;
         };
     };
@@ -157,7 +170,10 @@ namespace WireCat::Network {
         ApplicationLayer getNextLayer();
     public:
         enum class Type : uint8_t {
-            TCP, UDP, ICMP, Invalid
+            TCP,
+            UDP,
+            ICMP,
+            Invalid
         } type = Type::Invalid;
 
         std::span<uint8_t> rawData;
@@ -173,7 +189,9 @@ namespace WireCat::Network {
 
     public:
         enum class Type : uint8_t {
-            HTTP, HTTPS, Invalid
+            HTTP,
+            HTTPS,
+            Invalid
         } type = Type::Invalid;
 
         std::span<uint8_t> rawData;
