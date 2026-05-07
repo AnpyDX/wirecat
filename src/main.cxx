@@ -8,6 +8,7 @@
 #include <imgui_internal.h>
 
 #include "application.h"
+#include "network/layers.h"
 #include "widgets/text.h"
 #include "widgets/menu.h"
 #include "widgets/fold.h"
@@ -211,21 +212,21 @@ public:
                             Fold("Link")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
-                                    if (pkt.linkLayer.has_value()) {
-                                        auto& layer = pkt.linkLayer.value();
+                                    if (pkt.linkLayer.type != LinkLayer::Type::Invalid) {
+                                        auto& layer = pkt.linkLayer;
                                         if (layer.type == LinkLayer::Type::EthernetII) {
                                             ImGui::Text("协议类型: Ethernet II");
-                                            ImGui::Text("起始 MAC: %s", layer.srcAddress.toString().c_str());
-                                            ImGui::Text("目标 MAC: %s", layer.dstAddress.toString().c_str());
+                                            ImGui::Text("> 起始 MAC: %s", layer.srcAddress.toString().c_str());
+                                            ImGui::Text("> 目标 MAC: %s", layer.dstAddress.toString().c_str());
                                         }
                                         else {
                                             ImGui::Text("协议类型: IEEE 802.3");
-                                            ImGui::Text("起始 MAC: %s", layer.srcAddress.toString().c_str());
-                                            ImGui::Text("目标 MAC: %s", layer.dstAddress.toString().c_str());
-                                            ImGui::Text("LLC: DSAP=%#x, SSAP=%#x, CNTL=%#x", layer.DSAP, layer.SSAP, layer.CNTL);
-                                            ImGui::Text("SNAP: ORG Code=%#x", layer.orgCode);
+                                            ImGui::Text("> 起始 MAC: %s", layer.srcAddress.toString().c_str());
+                                            ImGui::Text("> 目标 MAC: %s", layer.dstAddress.toString().c_str());
+                                            ImGui::Text("> LLC: DSAP=%#x, SSAP=%#x, CNTL=%#x", layer.DSAP, layer.SSAP, layer.CNTL);
+                                            ImGui::Text("> SNAP: ORG Code=%#x", layer.orgCode);
                                         }
-                                        ImGui::Text("Type: %#x", layer.nextLayerType);
+                                        ImGui::Text("> Type: %#x", layer.nextLayerType);
                                     }
                                     else {
                                         ImGui::Text("Unknown");
@@ -262,16 +263,16 @@ public:
                             auto& pkt = capturedPackets[packetListTable->getSelected().value()];
                             if (previewFoldGroup->getSelected() == 1) {
                                 // Link Layer
-                                if (pkt.linkLayer.has_value()) {
-                                    hexEditState.Bytes = (void*)pkt.linkLayer->rawData.data();
-                                    hexEditState.MaxBytes = static_cast<int>(pkt.linkLayer->rawData.size());
+                                if (pkt.linkLayer.isValid()) {
+                                    hexEditState.Bytes = (void*)pkt.linkLayer.rawData.data();
+                                    hexEditState.MaxBytes = static_cast<int>(pkt.linkLayer.rawData.size());
                                 }
                             }
                             else if (previewFoldGroup->getSelected() == 2) {
                                 // Network Layer
-                                if (pkt.networkLayer.has_value()) {
-                                    hexEditState.Bytes = (void*)pkt.networkLayer->rawData.data();
-                                    hexEditState.MaxBytes = static_cast<int>(pkt.networkLayer->rawData.size());
+                                if (pkt.networkLayer.isValid()) {
+                                    hexEditState.Bytes = (void*)pkt.networkLayer.rawData.data();
+                                    hexEditState.MaxBytes = static_cast<int>(pkt.networkLayer.rawData.size());
                                 }
                             }
                             else if (previewFoldGroup->getSelected() == 3) {
