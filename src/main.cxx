@@ -180,11 +180,11 @@ public:
                         .addColumn("时间戳", [](const Packet& pkt, int) {
                             return pkt.timeStamp;
                         })
-                        .addColumn("起始 IP 地址", [](const Packet& pkt, int) {
-                            return pkt.srcIP;
+                        .addColumn("起始地址", [](const Packet& pkt, int) {
+                            return pkt.dstAddress;
                         })
-                        .addColumn("目标 IP 地址", [](const Packet& pkt, int) {
-                            return pkt.dstIP;
+                        .addColumn("目标地址", [](const Packet& pkt, int) {
+                            return pkt.srcAddress;
                         })
                         .addColumn("报文类型", [](const Packet& pkt, int) {
                             return pkt.packetType;
@@ -212,7 +212,7 @@ public:
                             Fold("Link")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
-                                    if (pkt.linkLayer.type != LinkLayer::Type::Invalid) {
+                                    if (pkt.linkLayer.isValid()) {
                                         auto& layer = pkt.linkLayer;
                                         if (layer.type == LinkLayer::Type::EthernetII) {
                                             ImGui::Text("协议类型: Ethernet II");
@@ -234,15 +234,58 @@ public:
                                 }))
                             .into(), &linkLayerInfoFold)
                         .add(
-                            Fold("Network")
+                            Fold("Network / IP")
                                 .add(Once([this]() {
-                                    ImGui::Text("test");
+                                    const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
+                                    if (pkt.networkLayer.isValid()) {
+                                        auto& layer = pkt.networkLayer;
+                                        switch (layer.type) {
+                                            case NetworkLayer::Type::IPv4: {
+                                                ImGui::Text("协议类型: IPv4");
+                                                ImGui::Text("> 服务类型: %d", layer.IPv4Info.typeOfService);
+                                                ImGui::Text("> 报文总长: %d", layer.IPv4Info.totalLength);
+                                                ImGui::Text("> 标识符: %d", layer.IPv4Info.identification);
+                                                ImGui::Text("> TTL: %d", layer.IPv4Info.timeToLive);
+                                                ImGui::Text("> 上层协议: %d", layer.IPv4Info.protocol);
+                                                ImGui::Text("> 起始 IP: %s", layer.IPv4Info.srcIPAddr.toString().c_str());
+                                                ImGui::Text("> 目的 IP: %s", layer.IPv4Info.dstIPAddr.toString().c_str());
+                                                break;
+                                            }
+                                            case NetworkLayer::Type::IPv6: {
+                                                ImGui::Text("协议类型: IPv6");
+                                                ImGui::Text("> 流类别: %#x", layer.IPv6Info.trafficClass);
+                                                ImGui::Text("> 流标签: %#x", layer.IPv6Info.flowLabel);
+                                                ImGui::Text("> 有效载荷长度: %d", layer.IPv6Info.payloadLength);
+                                                ImGui::Text("> 跳数限制: %d", layer.IPv6Info.hopLimit);
+                                                ImGui::Text("> 起始 IP: %s", layer.IPv6Info.srcIPAddr.toString().c_str());
+                                                ImGui::Text("> 目的 IP: %s", layer.IPv6Info.dstIPAddr.toString().c_str());
+                                                break;
+                                            }
+                                            case NetworkLayer::Type::ARP:
+                                                ImGui::Text("协议类型: ARP");
+                                            case NetworkLayer::Type::RARP: {
+                                                ImGui::Text("协议类型: RARP");
+                                                ImGui::Text("> ");
+                                                break;
+                                            }
+                                            default: break;
+                                        }
+                                    }
                                 }))
                             .into(), &networkLayerInfoFold)
                         .add(
                             Fold("Transport")
                                 .add(Once([this]() {
-                                    ImGui::Text("test");
+                                    const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
+                                    if (pkt.transportLayer.isValid()) {
+                                        auto& layer = pkt.transportLayer;
+                                        switch (layer.type) {
+                                            case TransportLayer::Type::TCP:
+                                            case TransportLayer::Type::UDP:
+                                            case TransportLayer::Type::ICMP:
+                                            default: break;
+                                        }
+                                    }
                                 }))
                             .into(), &transportLayerInfoFold)
                         .add(
@@ -358,6 +401,16 @@ public:
                 packetHexEditorWindow.draw();
             }
         }
+    }
+
+    static std::string asBinaryStr(uint32_t num, size_t len) {
+        std::string result = "";
+
+        for (size_t i = len - 1; i >= 0; i--) {
+            result += (num & (1 << i)) ? "1" : "0";
+        }
+
+        return result;
     }
 
 private:

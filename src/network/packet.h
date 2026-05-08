@@ -9,8 +9,8 @@ namespace WireCat::Network {
     struct Packet {
         Packet(pcpp::RawPacket* raw);
 
-        std::string srcIP { "*.*.*.*" };
-        std::string dstIP { "*.*.*.*" };
+        std::string srcAddress { "Unknown" };
+        std::string dstAddress { "Unknown" };
         std::string timeStamp;
         std::string packetType { "Unknown" };
         size_t frameLength;

@@ -29,7 +29,7 @@ namespace WireCat::Network {
 
     struct IPv6Address {
         IPv6Address() = default;
-        IPv6Address(std::span<uint8_t, 128> rawData);
+        IPv6Address(std::span<uint8_t, 16> rawData);
         IPv6Address(const IPv6Address&) = default;
 
         [[nodiscard]]
@@ -122,7 +122,7 @@ namespace WireCat::Network {
                 IPv4Address srcIPAddr;
                 MACAddress dstMACAddr;
                 IPv4Address dstIPAddr;
-            } ARPLikeInfo;
+            } ARPLikeInfo {};
 
             /* IPv4 */
             struct IPv4InfoT {
@@ -161,22 +161,63 @@ namespace WireCat::Network {
     struct TransportLayer {
     public:
         TransportLayer() = default;
-        TransportLayer(std::span<uint8_t> rawData);
+        TransportLayer(uint8_t type, std::span<uint8_t> rawData);
 
         [[nodiscard]]
-        bool isValid();
+        bool isValid() const;
 
         [[nodiscard]]
         ApplicationLayer getNextLayer();
+    private:
+        void asTCP();
+        void asUDP();
+        void asICMP();
+
     public:
         enum class Type : uint8_t {
-            TCP,
-            UDP,
-            ICMP,
+            TCP  = 6,
+            UDP  = 17,
+            ICMP = 1,
             Invalid
         } type = Type::Invalid;
 
         std::span<uint8_t> rawData;
+
+        union {
+            struct TCPInfoT {
+                uint16_t srcPort;
+                uint16_t dstPort;
+                uint32_t seqNum;
+                uint32_t ackNum;
+                uint8_t dataOffset;
+                bool ACK;
+                bool SYN;
+                bool FIN;
+                bool RST;
+                bool PSH;
+                bool URG;
+                uint16_t window;
+                uint16_t checksum;
+                uint16_t urgentPtr;
+                std::span<uint8_t> options;
+                std::span<uint8_t> data;
+            } TCPInfo {};
+
+            struct UDPInfoT {
+                uint16_t srcPort;
+                uint16_t dstPort;
+                uint16_t length;
+                uint16_t checksum;
+                std::span<uint8_t> data;
+            } UDPInfo;
+
+            struct ICMPInfoT {
+                uint8_t type;
+                uint8_t code;
+                uint16_t checksum;
+                std::span<uint8_t> data;
+            } ICMPInfo;
+        };
     };
 
     struct ApplicationLayer {
@@ -185,7 +226,7 @@ namespace WireCat::Network {
         ApplicationLayer(std::span<uint8_t> rawData);
 
         [[nodiscard]]
-        bool isvalid();
+        bool isvalid() const;
 
     public:
         enum class Type : uint8_t {

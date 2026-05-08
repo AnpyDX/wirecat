@@ -20,9 +20,44 @@ namespace WireCat::Network {
         }
 
         linkLayer = LinkLayer(std::span<uint8_t>(rawData.begin(), frameLength));
-        // networkLayer = linkLayer->getNextLayer();
-        // transportLayer = networkLayer->getNextLayer();
-        // srcIP = networkLayer.srcAddress.toString(), dstIP = networkLayer.dstAddress.toString();
-        // packetType = ...
+        networkLayer = linkLayer.getNextLayer();
+        transportLayer = networkLayer.getNextLayer();
+        applicationLayer = transportLayer.getNextLayer();
+        
+        switch (networkLayer.type) {
+            case NetworkLayer::Type::IPv4:
+                srcAddress = networkLayer.IPv4Info.srcIPAddr.toString();
+                dstAddress = networkLayer.IPv4Info.dstIPAddr.toString();
+                break;
+            case NetworkLayer::Type::IPv6:
+                srcAddress = networkLayer.IPv6Info.srcIPAddr.toString();
+                dstAddress = networkLayer.IPv6Info.dstIPAddr.toString();
+                break;
+            default: {
+                if (linkLayer.isValid()) {
+                    srcAddress = linkLayer.srcAddress.toString();
+                    dstAddress = linkLayer.dstAddress.toString();
+                }
+            }
+        }
+
+        if (transportLayer.isValid()) {
+            switch (transportLayer.type) {
+                case TransportLayer::Type::TCP: packetType = "TDP"; break;
+                case TransportLayer::Type::UDP: packetType = "UPD"; break;
+                case TransportLayer::Type::ICMP: packetType = "ICMP"; break;
+                default: break;
+            }
+        }
+        else if (networkLayer.isValid()) {
+            switch (networkLayer.type) {
+                case NetworkLayer::Type::ARP: packetType = "ARP"; break;
+                case NetworkLayer::Type::RARP: packetType = "RARP"; break;
+                default: break;
+            }
+        }
+        else {
+            // TODO: add application support...
+        }
     }
 }
