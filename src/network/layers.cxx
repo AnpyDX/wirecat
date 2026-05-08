@@ -46,6 +46,9 @@ namespace {
         }
 
         uint8_t* current() {
+            if (curPtr != boundPtr) {
+                throw std::runtime_error("current ptr != bounded ptr, indicating wrong memory layout performed");
+            }
             return curPtr;
         }
 
@@ -137,7 +140,7 @@ namespace WireCat::Network {
             nextLayerRawData = std::span<uint8_t>(rawData.begin() + 22, rawData.end() - 4);
         }
         else {
-            throw std::runtime_error("invalid Link Layer raw data, in offset = (0 + 12, 2)");
+            throw std::runtime_error("invalid Link Layer raw data, in data = (0 + 12, 2 bytes)");
         }
     }
 
@@ -194,7 +197,26 @@ namespace WireCat::Network {
     }
 
     void NetworkLayer::asIPv4() {
+        auto& info = IPv4Info;
 
+        uint8_t  t0; // version (4-bits) + headerLength(4-bits)
+        uint16_t t1; // flags (3-bits) + fragmentOffset(13-bits)
+
+        uint8_t* cur = 
+            MemDecoder(rawData.data(), 12)
+                .add_u8(t0)
+                .add_u8(info.typeOfService)
+                .add_u16(info.totalLength)
+                .add_u16(info.identification)
+                .add_u16(t1)
+                .add_u8(info.timeToLive)
+                .add_u8(info.protocol)
+                .add_u16(info.headerChecksum)
+            .current();
+
+        info.version = t0 & 0b00000000;
+        info.headerLength = t0 & 0x10;
+        info.flags = 
     }
 
     void NetworkLayer::asIPv6() {
