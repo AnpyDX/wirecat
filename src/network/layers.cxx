@@ -47,7 +47,7 @@ namespace {
             return *this;
         }
 
-        uint8_t* current() {
+        uint8_t* end() {
             if (curPtr != boundPtr) {
                 throw std::runtime_error("current ptr != bounded ptr, indicating wrong memory layout performed");
             }
@@ -198,7 +198,7 @@ namespace WireCat::Network {
                 .add_u8(info.hardwareLength)
                 .add_u8(info.protocolLength)
                 .add_u16(info.operation)
-            .current();
+            .end();
 
         info.srcMACAddr = MACAddress { std::span<uint8_t, 6>(cur, 6) };
             cur += 6;
@@ -225,7 +225,7 @@ namespace WireCat::Network {
                 .add_u8(info.timeToLive)
                 .add_u8(info.protocol)
                 .add_u16(info.headerChecksum)
-            .current();
+            .end();
 
         info.version = (t0 & 0xF0) >> 4;
         info.headerLength = t0 & 0x0F;
@@ -258,7 +258,7 @@ namespace WireCat::Network {
                 .add_u16(info.payloadLength)
                 .add_u8(info.nextHeader)
                 .add_u8(info.hopLimit)
-            .current();
+            .end();
         
         info.version = (t0 & 0xF0000000) >> 28;
         info.trafficClass = (t0 & 0x0FF00000) >> 20;
@@ -338,7 +338,7 @@ namespace WireCat::Network {
             .add_u16(info.window)
             .add_u16(info.checksum)
             .add_u16(info.urgentPtr)
-        .current();
+        .end();
 
         info.dataOffset = (t0 >> 4) * 4;
         if (info.dataOffset > rawData.size()) {
@@ -370,7 +370,7 @@ namespace WireCat::Network {
                 .add_u16(info.dstPort)
                 .add_u16(info.length)
                 .add_u16(info.checksum)
-            .current();
+            .end();
 
         info.data = std::span<uint8_t>(cur, rawData.data() + rawData.size());
     }
@@ -383,7 +383,7 @@ namespace WireCat::Network {
                 .add_u8(info.type)
                 .add_u8(info.code)
                 .add_u16(info.checksum)
-            .current();
+            .end();
 
         info.data = std::span<uint8_t>(cur, rawData.data() + rawData.size());
     }
@@ -396,11 +396,11 @@ namespace WireCat::Network {
                 .add_u8(info.type)
                 .add_u8(info.code)
                 .add_u16(info.checksum)
-            .current();
+            .end();
     }
 
     ApplicationLayer::ApplicationLayer(std::span<uint8_t> rawData)
-    : rawData(rawData) {}
+    : rawData(rawData), type(Type::Unknown) {}
 
     bool ApplicationLayer::isvalid() const {
         return type != Type::Invalid;

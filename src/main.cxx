@@ -351,7 +351,11 @@ public:
                         .add(
                             Fold("Application")
                                 .add(Once([this]() {
-                                    ImGui::Text("test");
+                                    const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
+                                    if (pkt.applicationLayer.isvalid()) {
+                                        auto& layer = pkt.applicationLayer;
+                                        ImGui::Text("Check Hex editor...");
+                                    }
                                 }))
                             .into(), &applicationLayerInfoFold)
                     .into(), &previewFoldGroup

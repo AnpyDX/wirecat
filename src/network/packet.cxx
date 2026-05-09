@@ -57,8 +57,5 @@ namespace WireCat::Network {
                 default: break;
             }
         }
-        else {
-            // TODO: add application support...
-        }
     }
 }

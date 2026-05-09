@@ -242,8 +242,7 @@ namespace WireCat::Network {
 
     public:
         enum class Type : uint8_t {
-            HTTP,
-            HTTPS,
+            Unknown,
             Invalid
         } type = Type::Invalid;
 
