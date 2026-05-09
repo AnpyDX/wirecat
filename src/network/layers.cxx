@@ -226,9 +226,9 @@ namespace WireCat::Network {
                 .add_u16(info.headerChecksum)
             .current();
 
-        info.version = t0 & 0xF0 >> 4;
+        info.version = (t0 & 0xF0) >> 4;
         info.headerLength = t0 & 0x0F;
-        info.flags = t1 & 0xE0000 >> 13;
+        info.flags = (t1 & 0xE0000) >> 13;
         info.fragmentOffset = t1 & 0x1FFF;
 
         info.srcIPAddr = IPv4Address { std::span<uint8_t, 4>(cur, 4) };
@@ -335,6 +335,11 @@ namespace WireCat::Network {
         .current();
 
         info.dataOffset = (t0 >> 4) * 4;
+        if (info.dataOffset > rawData.size()) {
+            type = Type::Invalid;
+            return;
+        }
+
         uint16_t flags = (t0 << 8) | t1;
         info.NS  = flags & (1 << 8);
         info.CWR = flags & (1 << 7);
