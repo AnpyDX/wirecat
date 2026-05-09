@@ -4,7 +4,6 @@
 #include <stdexcept>
 #include <SystemUtils.h>
 
-#include <iostream>
 
 namespace {
     struct MemDecoder {
@@ -186,7 +185,9 @@ namespace WireCat::Network {
 
     void NetworkLayer::asARPLike() {
         if (rawData.size() < 28) {
-            throw std::runtime_error("invalid ARP/RARP msg, as raw-data is less than 24 bytes");
+            // Invalid ARP/RARP msg, as raw-data is less than 24 bytes
+            type = Type::Invalid;
+            return;
         }
 
         auto& info = ARPLikeInfo;
@@ -239,7 +240,11 @@ namespace WireCat::Network {
             info.options = std::span<uint8_t>(cur, static_cast<size_t>(info.headerLength - 5) * 4);
             cur += static_cast<size_t>(info.headerLength - 5) * 4;
         }
-        std::cout << std::format("IPv4 rawData.size = {}, headerLength = {}\n", rawData.size(), info.headerLength);
+        else if (info.headerLength < 5) {
+            // IPv4's header is always longer than 20 bytes.
+            type = Type::Invalid;
+            return;
+        }
         info.data = std::span<uint8_t>(cur, rawData.size() - static_cast<size_t>(info.headerLength) * 4);
     }
 
@@ -248,7 +253,7 @@ namespace WireCat::Network {
         uint32_t t0;
 
         uint8_t* cur =
-            MemDecoder(rawData.data(), 40)
+            MemDecoder(rawData.data(), 8)
                 .add_u32(t0)
                 .add_u16(info.payloadLength)
                 .add_u8(info.nextHeader)
@@ -265,9 +270,9 @@ namespace WireCat::Network {
             cur += 16;
 
         uint8_t nextHdr = info.nextHeader;
-        while (cur < rawData.data() + rawData.size()) {
-            if (nextHdr == 1 || nextHdr == 6 || nextHdr == 17) {
-                /* ICMP = 1, TCP = 6, UDP = 17 */
+        while (cur < (rawData.data() + rawData.size())) {
+            if (nextHdr == 1 || nextHdr == 6 || nextHdr == 17 || nextHdr == 58) {
+                /* ICMP = 1, TCP = 6, UDP = 17, ICMPv6 = 58 */
                 info.protocol = nextHdr;
                 info.data = std::span<uint8_t>(cur, rawData.data() + rawData.size() - cur);
                 break;
@@ -297,6 +302,7 @@ namespace WireCat::Network {
             case Type::TCP: asTCP(); break;
             case Type::UDP: asUDP(); break;
             case Type::ICMP: asICMP(); break;
+            case Type::ICMPv6: asICMPv6(); break;
             default: {
                 this->type = Type::Invalid;
                 return;
@@ -351,8 +357,6 @@ namespace WireCat::Network {
         info.SYN = flags & (1 << 1);
         info.FIN = flags & (1 << 0);
 
-        std::cout << std::format("dataOffset = {}, size = {}\n", info.dataOffset, rawData.size());
-
         info.options = std::span<uint8_t>(rawData.data() + 20, rawData.data() + info.dataOffset);
         info.data = std::span<uint8_t>(rawData.data() + info.dataOffset, rawData.data() + rawData.size());
     }
@@ -382,6 +386,17 @@ namespace WireCat::Network {
             .current();
 
         info.data = std::span<uint8_t>(cur, rawData.data() + rawData.size());
+    }
+
+    void TransportLayer::asICMPv6() {
+        auto& info = ICMPv6Info;
+
+        uint8_t* cur = 
+            MemDecoder(rawData.data(), 4)
+                .add_u8(info.type)
+                .add_u8(info.code)
+                .add_u16(info.checksum)
+            .current();
     }
 
     ApplicationLayer::ApplicationLayer(std::span<uint8_t> rawData)

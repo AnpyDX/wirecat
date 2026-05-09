@@ -104,7 +104,7 @@ namespace WireCat::Network {
             ARP  = 0x0806,
             RARP = 0x0835,
             IPv4 = 0x0800,
-            IPv6 = 0x08DD,
+            IPv6 = 0x86DD,
             Invalid
         } type = Type::Invalid;
 
@@ -168,16 +168,19 @@ namespace WireCat::Network {
 
         [[nodiscard]]
         ApplicationLayer getNextLayer();
+
     private:
         void asTCP();
         void asUDP();
         void asICMP();
+        void asICMPv6();
 
     public:
         enum class Type : uint8_t {
             TCP  = 6,
             UDP  = 17,
             ICMP = 1,
+            ICMPv6 = 58,
             Invalid
         } type = Type::Invalid;
 
@@ -220,6 +223,12 @@ namespace WireCat::Network {
                 uint16_t checksum;
                 std::span<uint8_t> data;
             } ICMPInfo;
+
+            struct ICMPv6InfoT {
+                uint8_t type;
+                uint8_t code;
+                uint16_t checksum;
+            } ICMPv6Info;
         };
     };
 
