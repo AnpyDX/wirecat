@@ -2,18 +2,16 @@
 
 A lightweight network protocol analyzer.
 
-> Note: Work in progress.
-
 ## Features
 
 Supported protocols:
 
 - Ethernet II
 - IEEE 802.3
-- ARP / RARP (TODO)
-- IPv4 / IPv6 (TODO)
-- UDP / TCP (TODO)
-- HTTP / HTTPS (TODO)
+- ARP / RARP
+- IPv4 / IPv6
+- ICMP / ICMPv6
+- UDP / TCP
 
 ## Requirements
 
