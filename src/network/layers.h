@@ -190,12 +190,15 @@ namespace WireCat::Network {
                 uint32_t seqNum;
                 uint32_t ackNum;
                 uint8_t dataOffset;
+                bool NS;
+                bool CWR;
+                bool ECE;
+                bool URG;
                 bool ACK;
+                bool PSH;
+                bool RST;
                 bool SYN;
                 bool FIN;
-                bool RST;
-                bool PSH;
-                bool URG;
                 uint16_t window;
                 uint16_t checksum;
                 uint16_t urgentPtr;

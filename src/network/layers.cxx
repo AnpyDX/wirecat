@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <SystemUtils.h>
 
+#include <iostream>
+
 namespace {
     struct MemDecoder {
     public:
@@ -173,6 +175,15 @@ namespace WireCat::Network {
         return type != Type::Invalid;
     }
 
+    TransportLayer NetworkLayer::getNextLayer() {
+        switch (type) {
+            case Type::IPv4: return TransportLayer { static_cast<uint8_t>(IPv4Info.protocol), IPv4Info.data };
+            case Type::IPv6: return TransportLayer { static_cast<uint8_t>(IPv6Info.protocol), IPv6Info.data };
+            default: break;
+        }
+        return TransportLayer {};
+    }
+
     void NetworkLayer::asARPLike() {
         if (rawData.size() < 28) {
             throw std::runtime_error("invalid ARP/RARP msg, as raw-data is less than 24 bytes");
@@ -228,6 +239,7 @@ namespace WireCat::Network {
             info.options = std::span<uint8_t>(cur, static_cast<size_t>(info.headerLength - 5) * 4);
             cur += static_cast<size_t>(info.headerLength - 5) * 4;
         }
+        std::cout << std::format("IPv4 rawData.size = {}, headerLength = {}\n", rawData.size(), info.headerLength);
         info.data = std::span<uint8_t>(cur, rawData.size() - static_cast<size_t>(info.headerLength) * 4);
     }
 
@@ -255,7 +267,7 @@ namespace WireCat::Network {
         uint8_t nextHdr = info.nextHeader;
         while (cur < rawData.data() + rawData.size()) {
             if (nextHdr == 1 || nextHdr == 6 || nextHdr == 17) {
-                /* IMCP = 1, TCP = 6, UDP = 17 */
+                /* ICMP = 1, TCP = 6, UDP = 17 */
                 info.protocol = nextHdr;
                 info.data = std::span<uint8_t>(cur, rawData.data() + rawData.size() - cur);
                 break;
@@ -297,29 +309,44 @@ namespace WireCat::Network {
         return type != Type::Invalid;
     }
 
+    ApplicationLayer TransportLayer::getNextLayer() {
+        switch (type) {
+            case Type::TCP: return ApplicationLayer { TCPInfo.data };
+            case Type::UDP: return ApplicationLayer { UDPInfo.data };
+            default: break;
+        }
+        return ApplicationLayer {};
+    }
+
     void TransportLayer::asTCP() {
         auto& info = TCPInfo;
 
-        uint8_t t0;
+        uint8_t t0, t1;
         MemDecoder(rawData.data(), 20)
             .add_u16(info.srcPort)
             .add_u16(info.dstPort)
             .add_u32(info.seqNum)
             .add_u32(info.ackNum)
-            .add_u8(info.dataOffset)
             .add_u8(t0)
+            .add_u8(t1)
             .add_u16(info.window)
             .add_u16(info.checksum)
             .add_u16(info.urgentPtr)
         .current();
 
-        info.dataOffset >>= 6;
-        info.URG = t0 & 0b00100000;
-        info.ACK = t0 & 0b00010000;
-        info.PSH = t0 & 0b00001000;
-        info.RST = t0 & 0b00000100;
-        info.SYN = t0 & 0b00000010;
-        info.FIN = t0 & 0b00000001;
+        info.dataOffset = (t0 >> 4) * 4;
+        uint16_t flags = (t0 << 8) | t1;
+        info.NS  = flags & (1 << 8);
+        info.CWR = flags & (1 << 7);
+        info.ECE = flags & (1 << 6);
+        info.URG = flags & (1 << 5);
+        info.ACK = flags & (1 << 4);
+        info.PSH = flags & (1 << 3);
+        info.RST = flags & (1 << 2);
+        info.SYN = flags & (1 << 1);
+        info.FIN = flags & (1 << 0);
+
+        std::cout << std::format("dataOffset = {}, size = {}\n", info.dataOffset, rawData.size());
 
         info.options = std::span<uint8_t>(rawData.data() + 20, rawData.data() + info.dataOffset);
         info.data = std::span<uint8_t>(rawData.data() + info.dataOffset, rawData.data() + rawData.size());

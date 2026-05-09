@@ -43,8 +43,8 @@ namespace WireCat::Network {
 
         if (transportLayer.isValid()) {
             switch (transportLayer.type) {
-                case TransportLayer::Type::TCP: packetType = "TDP"; break;
-                case TransportLayer::Type::UDP: packetType = "UPD"; break;
+                case TransportLayer::Type::TCP: packetType = "TCP"; break;
+                case TransportLayer::Type::UDP: packetType = "UDP"; break;
                 case TransportLayer::Type::ICMP: packetType = "ICMP"; break;
                 default: break;
             }
