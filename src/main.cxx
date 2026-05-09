@@ -181,10 +181,10 @@ public:
                             return pkt.timeStamp;
                         })
                         .addColumn("起始地址", [](const Packet& pkt, int) {
-                            return pkt.dstAddress;
+                            return pkt.srcAddress;
                         })
                         .addColumn("目标地址", [](const Packet& pkt, int) {
-                            return pkt.srcAddress;
+                            return pkt.dstAddress;
                         })
                         .addColumn("报文类型", [](const Packet& pkt, int) {
                             return pkt.packetType;
@@ -264,10 +264,9 @@ public:
                                                 break;
                                             }
                                             case NetworkLayer::Type::ARP:
-                                                ImGui::Text("协议类型: ARP");
                                             case NetworkLayer::Type::RARP: {
                                                 auto& info = layer.ARPLikeInfo;
-                                                ImGui::Text("协议类型: RARP");
+                                                ImGui::Text("协议类型: %s", layer.type == NetworkLayer::Type::ARP ? "ARP" : "RARP");
                                                 ImGui::Text("> 硬件类型: %#x", info.hardwareType);
                                                 ImGui::Text("> 协议类型: %#x", info.protocolType);
                                                 ImGui::Text("> OP: %s", [info]() -> const char* {
@@ -292,7 +291,7 @@ public:
                                 }))
                             .into(), &networkLayerInfoFold)
                         .add(
-                            Fold("Transport")
+                            Fold("Transport / ICMP")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
                                     if (pkt.transportLayer.isValid()) {
@@ -330,9 +329,19 @@ public:
                                             case TransportLayer::Type::ICMP: {
                                                 auto& info = layer.ICMPInfo;
                                                 ImGui::Text("协议类型: ICMP");
-                                                //ImGui::Text("> 类型: %s(%d)", []() -> const char* {}(), info.type);
-                                                //ImGui::Text("> 代码: ")
+                                                ImGui::Text("> 类型: %s", std::format("{} (code = {})", getICMPDesc(info.type), info.code).c_str());
+                                                ImGui::Text("> 原始信息: type = %u, code = %u", info.type, info.code);
+                                                ImGui::Text("> 校验和: %#x", info.checksum);
+                                                ImGui::Text("> 数据长度: %lld", info.data.size());
                                                 break;
+                                            }
+                                            case TransportLayer::Type::ICMPv6: {
+                                                auto& info = layer.ICMPInfo;
+                                                ImGui::Text("协议类型: ICMPv6");
+                                                ImGui::Text("> 类型: %s", std::format("{} (code = {})", getICMPv6Desc(info.type), info.code).c_str());
+                                                ImGui::Text("> 原始信息: type = %u, code = %u", info.type, info.code);
+                                                ImGui::Text("> 校验和: %#x", info.checksum);
+                                                ImGui::Text("> 数据长度: %lld", info.data.size());
                                             }
                                             default: break;
                                         }
@@ -462,6 +471,45 @@ public:
         }
 
         return result;
+    }
+
+    static const char* getICMPDesc(uint8_t type) {
+        switch (type) {
+            case 0: return "Echo 响应";
+            case 1: return "目的不可达";
+            case 5: return "重定向报文";
+            case 8: return "Echo 请求";
+            case 9: return "路由器通知";
+            case 10: return "路由器请求";
+            case 11: return "ICMP 超时";
+            case 12: return "参数问题";
+            case 13: return "时间戳请求";
+            case 14: return "时间戳应答";
+            case 15: return "信息请求报文";
+            case 16: return "信息应答报文";
+            default: return "未知 ICMP 报文类型 (?)";
+        }
+    }
+
+    static const char* getICMPv6Desc(uint8_t type) {
+        switch (type) {
+            case 1: return "目的不可达";
+            case 2: return "数据包过大";
+            case 3: return "时间超时";
+            case 4: return "参数错误";
+            case 128: return "Echo 请求";
+            case 129: return "Echo 应答";
+            case 130: return "组播侦听器查询";
+            case 131: return "多播侦听器报告";
+            case 132: return "多播侦听器完成";
+            case 133: return "路由器请求报文";
+            case 134: return "路由器通告报文";
+            case 135: return "邻居请求报文";
+            case 136: return "邻居通告报文";
+            case 137: return "重定向报文";
+            case 143: return "组播侦听器报告 (v2)";
+            default: return "未知 ICMPv6 报文类型 (?)";
+        }
     }
 
 private:
