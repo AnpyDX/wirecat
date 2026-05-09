@@ -46,6 +46,7 @@ namespace WireCat::Network {
                 case TransportLayer::Type::TCP: packetType = "TCP"; break;
                 case TransportLayer::Type::UDP: packetType = "UDP"; break;
                 case TransportLayer::Type::ICMP: packetType = "ICMP"; break;
+                case TransportLayer::Type::ICMPv6: packetType = "ICMPv6"; break;
                 default: break;
             }
         }
