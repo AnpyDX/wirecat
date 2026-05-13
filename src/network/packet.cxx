@@ -22,7 +22,7 @@ namespace WireCat::Network {
         linkLayer = LinkLayer(std::span<uint8_t>(rawData.begin(), frameLength));
         networkLayer = linkLayer.getNextLayer();
         transportLayer = networkLayer.getNextLayer();
-        applicationLayer = transportLayer.getNextLayer();
+        applicationLayer = transportLayer.getNextLayer(networkLayer, transportLayer);
         
         switch (networkLayer.type) {
             case NetworkLayer::Type::IPv4:
@@ -41,7 +41,16 @@ namespace WireCat::Network {
             }
         }
 
-        if (transportLayer.isValid()) {
+        if (applicationLayer.isValid()) {
+            switch (applicationLayer.type) {
+                case ApplicationLayer::Type::DHCP: packetType = "DHCP"; break;
+                case ApplicationLayer::Type::DHCPv6: packetType = "DHCPv6"; break;
+                case ApplicationLayer::Type::HTTP: packetType = "HTTP"; break;
+                case ApplicationLayer::Type::HTTPS: packetType = "HTTPS"; break;
+                default: break;
+            }
+        }
+        else if (transportLayer.isValid()) {
             switch (transportLayer.type) {
                 case TransportLayer::Type::TCP: packetType = "TCP"; break;
                 case TransportLayer::Type::UDP: packetType = "UDP"; break;

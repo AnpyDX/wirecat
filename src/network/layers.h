@@ -24,6 +24,12 @@ namespace WireCat::Network {
         [[nodiscard]]
         std::string toString() const;
 
+        [[nodiscard]]
+        bool isZero() const;
+
+        [[nodiscard]]
+        bool isBroadcast() const;
+
         std::array<uint8_t, 4> address {};
     };
 
@@ -167,7 +173,7 @@ namespace WireCat::Network {
         bool isValid() const;
 
         [[nodiscard]]
-        ApplicationLayer getNextLayer();
+        ApplicationLayer getNextLayer(const NetworkLayer& network, const TransportLayer& transport);
 
     private:
         void asTCP();
@@ -235,17 +241,48 @@ namespace WireCat::Network {
     struct ApplicationLayer {
     public:
         ApplicationLayer() = default;
-        ApplicationLayer(std::span<uint8_t> rawData);
+        ApplicationLayer(const NetworkLayer& network, const TransportLayer& transport, std::span<uint8_t> rawData);
 
         [[nodiscard]]
-        bool isvalid() const;
+        bool isValid() const;
+        
+        void asDHCP();
+        void asDHCPv6();
+        void asHTTP();
+        void asHTTPS();
 
     public:
         enum class Type : uint8_t {
-            Unknown,
+            DHCP,
+            DHCPv6,
+            HTTP,   // HTTP 1.0, 1.1, 2.0
+            HTTPS,  // HTTPS or HTTP 3.0
             Invalid
         } type = Type::Invalid;
 
         std::span<uint8_t> rawData;
+
+        union {
+            struct DHCPInfoT {
+                uint8_t op;
+                uint8_t htype;
+                uint8_t hlen;
+                uint8_t hops;
+                uint32_t xid;
+                uint16_t secs;
+                uint16_t flags;
+                IPv4Address ciaddr;
+                IPv4Address yiaddr;
+                IPv4Address siaddr;
+                IPv4Address giaddr;
+                MACAddress chaddr;
+                std::span<uint8_t> sname;
+                std::span<uint8_t> file;
+            } DHCPInfo {};
+
+            struct DHCPv6InfoT {
+                uint8_t msgType;
+            } DHCPv6Info;
+        };
     };
 }

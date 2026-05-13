@@ -58,6 +58,11 @@ namespace {
         uint8_t* curPtr { nullptr };
         uint8_t* boundPtr { nullptr };
     };
+
+    template <typename T, typename ...Targets>
+    [[nodiscard]] bool is_anyone(const T& value, Targets... targets) {
+        return ((targets == value) || ...);
+    }
 }
 
 namespace WireCat::Network {
@@ -87,6 +92,20 @@ namespace WireCat::Network {
             address[0], address[1],
             address[2], address[3]
         );
+    }
+
+    bool IPv4Address::isZero() const {
+        for (auto& byte : address) {
+            if (byte != 0) return false;
+        }
+        return true;
+    }
+
+    bool IPv4Address::isBroadcast() const {
+        for (auto& byte : address) {
+            if (byte != 0xFF) return false;
+        }
+        return true;
     }
 
     IPv6Address::IPv6Address(std::span<uint8_t, 16> rawData) {
@@ -119,8 +138,8 @@ namespace WireCat::Network {
             type = Type::EthernetII;
 
             nextLayerType = ident;
-            // Remove HEAD (6 + 6 + 2 bytes) and CRC (4 bytes)
-            nextLayerRawData = std::span<uint8_t>(rawData.begin() + 14, rawData.end() - 4);
+            // Remove HEAD (6 + 6 + 2 bytes)
+            nextLayerRawData = std::span<uint8_t>(rawData.begin() + 14, rawData.end());
         }
         else if (ident <= 1500) {
             /* IEEE 802.3 */
@@ -138,8 +157,8 @@ namespace WireCat::Network {
             memcpy(&nextLayerType, rawData.data() + 20, 2);
             nextLayerType = pcpp::netToHost16(nextLayerType);
 
-            // Remove HEAD (14 + 3 + 5 bytes) and CRC (4 bytes)
-            nextLayerRawData = std::span<uint8_t>(rawData.begin() + 22, rawData.end() - 4);
+            // Remove HEAD (14 + 3 + 5 bytes)
+            nextLayerRawData = std::span<uint8_t>(rawData.begin() + 22, rawData.end());
         }
         else {
             throw std::runtime_error("invalid Link Layer raw data, in data = (0 + 12, 2 bytes)");
@@ -315,10 +334,10 @@ namespace WireCat::Network {
         return type != Type::Invalid;
     }
 
-    ApplicationLayer TransportLayer::getNextLayer() {
+    ApplicationLayer TransportLayer::getNextLayer(const NetworkLayer& network, const TransportLayer& transport) {
         switch (type) {
-            case Type::TCP: return ApplicationLayer { TCPInfo.data };
-            case Type::UDP: return ApplicationLayer { UDPInfo.data };
+            case Type::TCP: return ApplicationLayer { network, transport, TCPInfo.data };
+            case Type::UDP: return ApplicationLayer { network, transport, UDPInfo.data };
             default: break;
         }
         return ApplicationLayer {};
@@ -399,10 +418,91 @@ namespace WireCat::Network {
             .end();
     }
 
-    ApplicationLayer::ApplicationLayer(std::span<uint8_t> rawData)
-    : rawData(rawData), type(Type::Unknown) {}
+    ApplicationLayer::ApplicationLayer(
+        const NetworkLayer& network, 
+        const TransportLayer& transport, 
+        std::span<uint8_t> rawData
+    )
+    : rawData(rawData) {
+        if (
+            network.type == NetworkLayer::Type::IPv4 && \
+            transport.type == TransportLayer::Type::UDP && \
+            is_anyone(transport.UDPInfo.srcPort, 67, 68) && \
+            is_anyone(transport.UDPInfo.dstPort, 67, 68)
+        ) { asDHCP(); }
+        
+        else if (
+            network.type == NetworkLayer::Type::IPv6 && \
+            transport.type == TransportLayer::Type::UDP && \
+            is_anyone(transport.UDPInfo.srcPort, 546, 547) && \
+            is_anyone(transport.UDPInfo.dstPort, 546, 547)
+        ) { asDHCPv6(); }
 
-    bool ApplicationLayer::isvalid() const {
+        else if (
+            transport.type == TransportLayer::Type::TCP && \
+            (transport.TCPInfo.srcPort == 80 || \
+             transport.TCPInfo.dstPort == 80)
+        ) { asHTTP(); }
+
+        else if (
+            transport.TCPInfo.srcPort == 443 || \
+            transport.TCPInfo.dstPort == 443
+        ) { asHTTPS(); }
+    }
+
+    bool ApplicationLayer::isValid() const {
         return type != Type::Invalid;
+    }
+
+    void ApplicationLayer::asDHCP() {
+        if (rawData.size() < 236) {
+            return;
+        }
+
+        auto& info = DHCPInfo;
+
+        uint8_t* cur = 
+            MemDecoder(rawData.data(), 12)
+                .add_u8(info.op)
+                .add_u8(info.htype)
+                .add_u8(info.hlen)
+                .add_u8(info.hops)
+                .add_u32(info.xid)
+                .add_u16(info.secs)
+                .add_u16(info.flags)
+            .end();
+
+        info.ciaddr = IPv4Address { std::span<uint8_t, 4>(cur, cur + 4) };
+            cur += 4;
+        info.yiaddr = IPv4Address { std::span<uint8_t, 4>(cur, cur + 4) };
+            cur += 4;
+        info.siaddr = IPv4Address { std::span<uint8_t, 4>(cur, cur + 4) };
+            cur += 4;
+        info.giaddr = IPv4Address { std::span<uint8_t, 4>(cur, cur + 4) };
+            cur += 4;
+        info.chaddr = MACAddress { std::span<uint8_t, 6>(cur, cur + 6) };
+            cur += 16; // FIXME: MACAddress only work for Ethernet (htype = 1, hlen = 6)
+        info.sname = std::span<uint8_t, 64>(cur, cur + 64);
+            cur += 64;
+        info.file = std::span<uint8_t, 128>(cur, cur + 128);
+
+        type = Type::DHCP;
+    }
+
+    void ApplicationLayer::asDHCPv6() {
+        auto& info = DHCPv6Info;
+        MemDecoder(rawData.data(), 1)
+            .add_u8(info.msgType)
+        .end();
+
+        type = Type::DHCPv6;
+    }
+
+    void ApplicationLayer::asHTTP() {
+        type = Type::HTTP;
+    }
+
+    void ApplicationLayer::asHTTPS() {
+        type = Type::HTTPS;
     }
 }

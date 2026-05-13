@@ -352,9 +352,42 @@ public:
                             Fold("Application")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
-                                    if (pkt.applicationLayer.isvalid()) {
+                                    if (pkt.applicationLayer.isValid()) {
                                         auto& layer = pkt.applicationLayer;
-                                        ImGui::Text("Check Hex editor...");
+                                        switch (layer.type) {
+                                            case ApplicationLayer::Type::DHCP: {
+                                                auto& info = layer.DHCPInfo;
+                                                ImGui::Text("协议类型: DHCP");
+                                                ImGui::Text("> OP = %#x", info.op);
+                                                ImGui::Text("> 硬件类型 = %#x, 硬件地址长度 = %#x", info.htype, info.hlen);
+                                                ImGui::Text("> 报文中继次数 (Hops): %u", info.hops);
+                                                ImGui::Text("> 事务ID: %u", info.xid);
+                                                ImGui::Text("> secs: %u 秒", info.secs);
+                                                ImGui::Text("> 客户端地址 (Ci Address): %s", info.ciaddr.toString().c_str());
+                                                ImGui::Text("> 分配地址   (Yi Address): %s", info.yiaddr.toString().c_str());
+                                                ImGui::Text("> Si Address: %s", info.siaddr.toString().c_str());
+                                                ImGui::Text("> Gi Address: %s", info.giaddr.toString().c_str());
+                                                ImGui::Text("> 客户端 MAC 地址: %s", info.chaddr.toString().c_str());  
+                                                break;
+                                            }
+                                            case ApplicationLayer::Type::DHCPv6: {
+                                                auto& info = layer.DHCPv6Info;
+                                                ImGui::Text("协议类型: DHCPv6");
+                                                ImGui::Text("> 消息类型: %#x", info.msgType);
+                                                break;
+                                            }
+                                            case ApplicationLayer::Type::HTTP: {
+                                                ImGui::Text("协议类型: HTTP");
+                                                ImGui::Text("Check the hex editor ->");
+                                                break;
+                                            }
+                                            case ApplicationLayer::Type::HTTPS: {
+                                                ImGui::Text("协议类型: HTTPS");
+                                                ImGui::Text("Check the hex editor ->");
+                                                break;
+                                            }
+                                            default: break;
+                                        }
                                     }
                                 }))
                             .into(), &applicationLayerInfoFold)
@@ -391,7 +424,7 @@ public:
                             }
                             else if (previewFoldGroup->getSelected() == 4) {
                                 // Application Layer
-                                if (pkt.applicationLayer.isvalid()) {
+                                if (pkt.applicationLayer.isValid()) {
                                     hexEditState.Bytes = (void*)pkt.applicationLayer.rawData.data();
                                     hexEditState.MaxBytes = static_cast<int>(pkt.applicationLayer.rawData.size());
                                 }
