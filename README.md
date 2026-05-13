@@ -12,6 +12,7 @@ Supported protocols:
 - IPv4 / IPv6
 - ICMP / ICMPv6
 - UDP / TCP
+- DHCP / DHCPv6
 
 ## Requirements
 
