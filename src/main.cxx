@@ -200,6 +200,23 @@ public:
                     FoldGroup()
                         .setHidden(true)
                         .add(
+                            Once([this]() {
+                                if (packetListTable->getSelected().has_value()) {
+                                    const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
+                                    if (pkt.transportLayer.isValid() && transportLayerInfoFold != nullptr) {
+                                        switch (pkt.transportLayer.type) {
+                                            case TransportLayer::Type::ICMP:
+                                            case TransportLayer::Type::ICMPv6:
+                                                transportLayerInfoFold->setLabel("ICMP");
+                                                break;
+                                            default:
+                                                transportLayerInfoFold->setLabel("Transport");
+                                        }
+                                    }
+                                }
+                            })
+                        )
+                        .add(
                             Fold("Raw Packet")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
@@ -234,7 +251,7 @@ public:
                                 }))
                             .into(), &linkLayerInfoFold)
                         .add(
-                            Fold("Network / IP")
+                            Fold("Network")
                                 .add(Once([this]() {
                                     const auto& pkt = capturedPackets[packetListTable->getSelected().value()];
                                     if (pkt.networkLayer.isValid()) {
@@ -498,16 +515,6 @@ public:
                 packetHexEditorWindow.draw();
             }
         }
-    }
-
-    static std::string asBinaryStr(uint32_t num, size_t len) {
-        std::string result = "";
-
-        for (size_t i = len - 1; i >= 0; i--) {
-            result += (num & (1 << i)) ? "1" : "0";
-        }
-
-        return result;
     }
 
     static const char* getICMPDesc(uint8_t type) {
